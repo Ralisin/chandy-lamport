@@ -1,3 +1,2 @@
-### Chandy-Lamport distributed snapshot
-
-## SDCC project
+# Chandy-Lamport distributed snapshot
+SDCC project
