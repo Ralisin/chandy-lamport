@@ -1,7 +1,7 @@
 package main
 
 import (
-	"chandy-lamport/remoteProcedures"
+	"chandy-lamport/snapshotService"
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -12,7 +12,7 @@ import (
 const serviceRegistryAddr = "localhost"
 const serviceRegistryPort = "3030"
 
-var serviceRegistry remoteProcedures.ServiceRegistryClient
+var serviceRegistry snapshotService.ServiceRegistryClient
 
 func registerPeerServiceOnServiceRegistry(serviceAddr string) {
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", serviceRegistryAddr, serviceRegistryPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -26,9 +26,9 @@ func registerPeerServiceOnServiceRegistry(serviceAddr string) {
 		}
 	}(conn)
 
-	serviceRegistry = remoteProcedures.NewServiceRegistryClient(conn)
+	serviceRegistry = snapshotService.NewServiceRegistryClient(conn)
 
-	peerStruct := remoteProcedures.Peer{Addr: serviceAddr}
+	peerStruct := snapshotService.Peer{Addr: serviceAddr}
 
 	// Register process to Service Registry
 	registerPeerResponse, err := serviceRegistry.RegisterPeer(context.Background(), &peerStruct)

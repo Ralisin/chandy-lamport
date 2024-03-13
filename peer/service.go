@@ -1,7 +1,7 @@
 package main
 
 import (
-	"chandy-lamport/remoteProcedures"
+	"chandy-lamport/snapshotService"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"
@@ -9,7 +9,7 @@ import (
 )
 
 type PeerFunctionServer struct {
-	remoteProcedures.UnimplementedPeerFunctionServer
+	snapshotService.UnimplementedPeerFunctionServer
 }
 
 // initPeerServiceServer serves to initialize service server, returned server must be served
@@ -27,13 +27,22 @@ func initPeerServiceServer() (net.Listener, net.Addr, *grpc.Server) {
 
 	// Register ServiceRegistry as a service
 	peerService := PeerFunctionServer{}
-	remoteProcedures.RegisterPeerFunctionServer(peerServer, peerService)
+	snapshotService.RegisterPeerFunctionServer(peerServer, peerService)
 
 	return lis, serviceAddr, peerServer
 }
 
-func (s PeerFunctionServer) NewPeerAdded(_ context.Context, peer *remoteProcedures.Peer) (*remoteProcedures.Empty, error) {
+// NewPeerAdded update peerList and append the new peer to the end
+func (s PeerFunctionServer) NewPeerAdded(_ context.Context, peer *snapshotService.Peer) (*snapshotService.Empty, error) {
 	peerList.PeerList = append(peerList.PeerList, peer)
+
+	// TODO: understand if peerList must be sorted
+
+	return nil, nil
+}
+
+func (s PeerFunctionServer) SendMessage(_ context.Context, message *snapshotService.Message) (*snapshotService.Empty, error) {
+	// TODO: implement
 
 	return nil, nil
 }

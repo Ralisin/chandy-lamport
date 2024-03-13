@@ -1,7 +1,7 @@
 package main
 
 import (
-	"chandy-lamport/remoteProcedures"
+	"chandy-lamport/snapshotService"
 	"fmt"
 	"google.golang.org/grpc"
 	"log"
@@ -10,7 +10,7 @@ import (
 
 const port = "3030"
 
-var peerList remoteProcedures.PeerList
+var peerList snapshotService.PeerList
 
 // Start Service Registry and handle peers registration
 func main() {
@@ -25,7 +25,7 @@ func main() {
 
 	// Register ServiceRegistry as a service
 	serviceRegistry := ServiceRegistryServer{}
-	remoteProcedures.RegisterServiceRegistryServer(serverRegister, serviceRegistry)
+	snapshotService.RegisterServiceRegistryServer(serverRegister, serviceRegistry)
 
 	log.Printf("Service Registry started")
 

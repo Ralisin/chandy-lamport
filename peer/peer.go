@@ -1,12 +1,12 @@
 package main
 
 import (
-	"chandy-lamport/remoteProcedures"
+	"chandy-lamport/snapshotService"
 	"log"
 )
 
-var currPeer remoteProcedures.Peer
-var peerList remoteProcedures.PeerList
+var currPeer snapshotService.Peer
+var peerList snapshotService.PeerList
 
 func main() {
 	/* Initialize Peer Service server */
@@ -21,4 +21,8 @@ func main() {
 	if err := peerServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve process over port []: %s", err)
 	}
+}
+
+func RandomMessage() {
+
 }

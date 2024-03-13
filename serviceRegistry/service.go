@@ -1,7 +1,7 @@
 package main
 
 import (
-	"chandy-lamport/remoteProcedures"
+	"chandy-lamport/snapshotService"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -9,19 +9,19 @@ import (
 )
 
 type ServiceRegistryServer struct {
-	remoteProcedures.UnimplementedServiceRegistryServer
+	snapshotService.UnimplementedServiceRegistryServer
 }
 
 // RegisterPeer Service to register a new process in the process of available processes
-func (s ServiceRegistryServer) RegisterPeer(_ context.Context, peerToRegister *remoteProcedures.Peer) (*remoteProcedures.RegisterPeerResponse, error) {
+func (s ServiceRegistryServer) RegisterPeer(_ context.Context, peerToRegister *snapshotService.Peer) (*snapshotService.RegisterPeerResponse, error) {
 	// Create new peer to add to list with address of peer service
-	newPeer := remoteProcedures.Peer{
+	newPeer := snapshotService.Peer{
 		Id:   getNewId(),
 		Addr: peerToRegister.Addr,
 	}
 
 	// Create response with list without newPeer
-	registerPeerResponse := remoteProcedures.RegisterPeerResponse{
+	registerPeerResponse := snapshotService.RegisterPeerResponse{
 		Peer:     &newPeer,
 		PeerList: peerList.PeerList,
 	}
@@ -40,7 +40,7 @@ func (s ServiceRegistryServer) RegisterPeer(_ context.Context, peerToRegister *r
 	return &registerPeerResponse, nil
 }
 
-func callServiceNewPeerAdded(peerToCall *remoteProcedures.Peer, newPeer *remoteProcedures.Peer) {
+func callServiceNewPeerAdded(peerToCall *snapshotService.Peer, newPeer *snapshotService.Peer) {
 	conn, err := grpc.Dial(peerToCall.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Did not connect: %v", err)
@@ -52,7 +52,7 @@ func callServiceNewPeerAdded(peerToCall *remoteProcedures.Peer, newPeer *remoteP
 		}
 	}(conn)
 
-	peerService := remoteProcedures.NewPeerFunctionClient(conn)
+	peerService := snapshotService.NewPeerFunctionClient(conn)
 
 	// Register process to Service Registry
 	_, err = peerService.NewPeerAdded(context.Background(), newPeer)

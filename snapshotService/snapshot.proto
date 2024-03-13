@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+option go_package = "./snapshotService";
+
+message Peer {
+  int32 id = 1;
+  string addr = 2;
+}
+
+message RegisterPeerResponse {
+  Peer peer = 1;
+  repeated Peer peerList = 2;
+}
+
+service ServiceRegistry {
+  rpc RegisterPeer (Peer) returns (RegisterPeerResponse); // Register peer service into Service Registry
+}
+
+message PeerList {
+  repeated Peer peerList = 1;
+}
+
+message Empty {}
+
+enum MessageType {
+  MESSAGE = 0;
+  MARKER = 1;
+}
+
+message Message {
+  MessageType mType = 1;
+  string message = 2;
+}
+
+service PeerFunction {
+  rpc NewPeerAdded (Peer) returns (Empty); // Called by Service Registry if there is a new peer
+  rpc SendMessage (Message) returns (Empty); // RPC for communication through peers
+}
