@@ -12,12 +12,6 @@ type PeerFunctionServer struct {
 	remoteProcedures.UnimplementedPeerFunctionServer
 }
 
-func (s PeerFunctionServer) NewPeerAdded(_ context.Context, peer *remoteProcedures.Peer) (*remoteProcedures.Empty, error) {
-	peerList.PeerList = append(peerList.PeerList, peer)
-
-	return nil, nil
-}
-
 // initPeerServiceServer serves to initialize service server, returned server must be served
 func initPeerServiceServer() (net.Listener, net.Addr, *grpc.Server) {
 	lis, err := net.Listen("tcp", ":")
@@ -36,4 +30,10 @@ func initPeerServiceServer() (net.Listener, net.Addr, *grpc.Server) {
 	remoteProcedures.RegisterPeerFunctionServer(peerServer, peerService)
 
 	return lis, serviceAddr, peerServer
+}
+
+func (s PeerFunctionServer) NewPeerAdded(_ context.Context, peer *remoteProcedures.Peer) (*remoteProcedures.Empty, error) {
+	peerList.PeerList = append(peerList.PeerList, peer)
+
+	return nil, nil
 }
