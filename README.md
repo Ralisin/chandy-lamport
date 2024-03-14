@@ -3,7 +3,7 @@
 
 Chandy-Lamport algorithm is the first algorithm proposed for taking a distributed snapshot.
 
-We can highlight his assumptions:
+We can highlight its assumptions:
 - The distributed system consist of a finite set of processes and a finite set of channels
 - Channels are assumed to have infinite buffers, be error-free and deliver messages in FIFO (First In First Out) order
 - The delay experienced by a message in a channel is arbitrary but finite
