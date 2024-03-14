@@ -41,8 +41,10 @@ func (s PeerFunctionServer) NewPeerAdded(_ context.Context, peer *snapshotServic
 	return nil, nil
 }
 
+// SendMessage RPC call used to send message from one peer to another one
 func (s PeerFunctionServer) SendMessage(_ context.Context, message *snapshotService.Message) (*snapshotService.Empty, error) {
 	// TODO: implement
+	log.Printf("%s", message)
 
 	return nil, nil
 }

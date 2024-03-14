@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
+	"sort"
 )
 
 type ServiceRegistryServer struct {
@@ -20,36 +21,45 @@ func (s ServiceRegistryServer) RegisterPeer(_ context.Context, peerToRegister *s
 		Addr: peerToRegister.Addr,
 	}
 
+	// emptyPeerList is used to manage contacted peer failures
+	emptyPeerList := snapshotService.PeerList{PeerList: nil}
+	// Update the list of each peer with newPeer
+	for _, peerEl := range peerList.PeerList {
+		// Informs a peer in peerList of the entry of a new peer
+		err := callServiceNewPeerAdded(peerEl, &newPeer)
+		if err != nil {
+			continue
+		}
+
+		emptyPeerList.PeerList = append(emptyPeerList.PeerList, peerEl)
+	}
+	peerList.PeerList = emptyPeerList.PeerList
+
 	// Create response with list without newPeer
 	registerPeerResponse := snapshotService.RegisterPeerResponse{
 		Peer:     &newPeer,
 		PeerList: peerList.PeerList,
 	}
 
-	// Update all peers list with newPeer
-	for _, peerEl := range peerList.PeerList {
-		callServiceNewPeerAdded(peerEl, &newPeer)
-	}
-
 	// Append newPeer to peerList
 	peerList.PeerList = append(peerList.PeerList, &newPeer)
 
+	// Sort peerList
+	sort.Slice(peerList.PeerList, func(i, j int) bool { return peerList.PeerList[i].Id < peerList.PeerList[j].Id })
+
 	// Print some log to show ServiceRegistry workload
-	log.Println(peerList.PeerList)
+	log.Print("Curr peerList: ", peerList.PeerList)
 
 	return &registerPeerResponse, nil
 }
 
-func callServiceNewPeerAdded(peerToCall *snapshotService.Peer, newPeer *snapshotService.Peer) {
+func callServiceNewPeerAdded(peerToCall *snapshotService.Peer, newPeer *snapshotService.Peer) error {
 	conn, err := grpc.Dial(peerToCall.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Did not connect: %v", err)
 	}
 	defer func(conn *grpc.ClientConn) {
-		err := conn.Close()
-		if err != nil {
-			log.Fatalf("Error closing connection: %s", err)
-		}
+		_ = conn.Close()
 	}(conn)
 
 	peerService := snapshotService.NewPeerFunctionClient(conn)
@@ -57,8 +67,10 @@ func callServiceNewPeerAdded(peerToCall *snapshotService.Peer, newPeer *snapshot
 	// Register process to Service Registry
 	_, err = peerService.NewPeerAdded(context.Background(), newPeer)
 	if err != nil {
-		log.Fatalf("Error when calling NewPeerAdded on peer: %s, err: %s", peerToCall.Addr, err)
+		return err
 	}
+
+	return nil
 }
 
 func getNewId() int32 {
@@ -67,5 +79,17 @@ func getNewId() int32 {
 		return 1
 	}
 
-	return peerList.PeerList[len(peerList.PeerList)-1].Id + 1
+	// Sort peerList
+	sort.Slice(peerList.PeerList, func(i, j int) bool { return peerList.PeerList[i].Id < peerList.PeerList[j].Id })
+
+	var minId int32 = 1
+	for _, peerEl := range peerList.PeerList {
+		if minId < peerEl.Id {
+			return minId
+		}
+
+		minId++
+	}
+
+	return minId
 }
