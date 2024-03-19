@@ -30,6 +30,7 @@ enum MessageType {
 message Message {
   MessageType mType = 1;
   string message = 2;
+  Peer peer = 3;
 }
 
 service PeerFunction {
