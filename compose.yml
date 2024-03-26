@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  service_registry:
+    build:
+      context: .
+      dockerfile: serviceRegistry/Dockerfile
+    hostname: serviceRegistry
+    ports:
+      - "3030:3030"
+
+  peer:
+    build:
+      context: .
+      dockerfile: peer/Dockerfile
+    hostname: peer
+    depends_on:
+      - service_registry
+    links:
+      - service_registry
+    deploy:
+      replicas: 5

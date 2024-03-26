@@ -5,35 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"log"
-	"net"
 )
 
 type PeerFunctionServer struct {
 	snapshotService.UnimplementedPeerFunctionServer
-}
-
-// initPeerServiceServer serves to initialize service server, returned server must be served
-func initPeerServiceServer() (net.Listener, net.Addr, *grpc.Server) {
-	lis, err := net.Listen("tcp", ":")
-	if err != nil {
-		log.Fatalf("Failed to start the Peer service: %s", err)
-	}
-
-	log.Printf("lis.Addr: %s", lis.Addr().String())
-
-	// Get address of peer server service
-	serviceAddr := lis.Addr()
-
-	// Create a gRPC server with no service registered
-	peerServer := grpc.NewServer()
-
-	// Register ServiceRegistry as a service
-	peerService := PeerFunctionServer{}
-	snapshotService.RegisterPeerFunctionServer(peerServer, peerService)
-
-	return lis, serviceAddr, peerServer
 }
 
 // NewPeerAdded update peerList and append the new peer to the end
