@@ -2,41 +2,15 @@ package main
 
 import (
 	"chandy-lamport/snapshotService"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"math/rand"
-	"net"
-	"os"
 	"sync"
 	"time"
 )
-
-// Config Configuration struct to represent the JSON data
-type Config struct {
-	Localhost LocalhostConfig `json:"localhost"`
-	Docker    DockerConfig    `json:"docker"`
-}
-
-type LocalhostConfig struct {
-	ServiceRegistryAddr string `json:"serviceRegistryAddr"`
-	ServiceRegistryPort string `json:"serviceRegistryPort"`
-	PeerAddr            string `json:"peerAddr"`
-}
-
-type DockerConfig struct {
-	ServiceRegistryAddr string `json:"serviceRegistryAddr"`
-	ServiceRegistryPort string `json:"serviceRegistryPort"`
-	PeerAddr            string `json:"peerAddr"`
-}
-
-var serviceRegistryAddr string
-var serviceRegistryPort string
-var peerAddr string
 
 var (
 	messageList      []snapshotService.Message
@@ -45,77 +19,6 @@ var (
 	snapshot      bool
 	snapshotMutex sync.Mutex // Needed to sync snapshot through threads
 )
-
-var serviceRegistry snapshotService.ServiceRegistryClient
-
-func registerPeerServiceOnServiceRegistry(serviceAddr string) {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", serviceRegistryAddr, serviceRegistryPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Did not connect: %v", err)
-	}
-	defer func(conn *grpc.ClientConn) {
-		_ = conn.Close()
-	}(conn)
-
-	serviceRegistry = snapshotService.NewServiceRegistryClient(conn)
-
-	peerStruct := snapshotService.Peer{Addr: serviceAddr}
-
-	// Register process to Service Registry
-	registerPeerResponse, err := serviceRegistry.RegisterPeer(context.Background(), &peerStruct)
-	if err != nil {
-		log.Fatalf("Error when calling RegisterPeer: %s", err)
-	}
-
-	// Register peerStruct info into myPeer
-	myPeer.Id, myPeer.Addr = registerPeerResponse.Peer.Id, registerPeerResponse.Peer.Addr
-
-	// Register peerStruct list into peerList global variable
-	peerList.PeerList = registerPeerResponse.PeerList
-}
-
-// initPeerServiceServer serves to initialize peer server
-func initPeerServiceServer() (net.Listener, net.Addr, *grpc.Server) {
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:", peerAddr))
-	if err != nil {
-		log.Fatalf("Failed to start the Peer service: %s", err)
-	}
-
-	log.Printf("lis.Addr: %s", lis.Addr().String())
-
-	// Get address of peer server service
-	serviceAddr := lis.Addr()
-
-	// Create a gRPC server with no service registered
-	peerServer := grpc.NewServer()
-
-	// Register ServiceRegistry as a service
-	peerService := PeerFunctionServer{}
-	snapshotService.RegisterPeerFunctionServer(peerServer, peerService)
-
-	return lis, serviceAddr, peerServer
-}
-
-// sendMessageToPeer send a string message to the peer "peerToCall" using RPC
-func sendMessageToPeer(peerToCall *snapshotService.Peer, message *snapshotService.Message) error {
-	conn, err := grpc.Dial(peerToCall.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return errors.New(fmt.Sprintf("Did not connect: %s", err))
-	}
-	defer func(conn *grpc.ClientConn) {
-		_ = conn.Close()
-	}(conn)
-
-	peerService := snapshotService.NewPeerFunctionClient(conn)
-
-	// Send message to peers
-	_, err = peerService.SendMessage(context.Background(), message)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error when calling NewPeerAdded on peer: %s, err: %s", peerToCall.Addr, err))
-	}
-
-	return nil
-}
 
 // peerSendMessagesJob randomly send message to other peers, changing message type
 func peerSendMessagesJob() {
@@ -170,6 +73,7 @@ func peerSendMessagesJob() {
 	}
 }
 
+// peerReceiveMessagesJob consume messages received via RPC call
 func peerReceiveMessagesJob() {
 	// Map to track which peer send marker message
 	peerMap := make(map[int32]bool)
@@ -249,6 +153,7 @@ func peerReceiveMessagesJob() {
 				log.Printf("All markers received\nmessagesPerPeer: %s", messagesPerPeer)
 
 				// TODO save snapshot in a file
+
 				// Clear messagesPerPeer
 				messagesPerPeer = make(map[int32][]snapshotService.Message)
 
@@ -265,19 +170,23 @@ func peerReceiveMessagesJob() {
 	}
 }
 
-func ReadConfig(filename string) (Config, error) {
-	var config Config
-
-	// Read the JSON file
-	data, err := os.ReadFile(filename)
+// sendMessageToPeer send a string message to the peer "dest" using RPC
+func sendMessageToPeer(dest *snapshotService.Peer, message *snapshotService.Message) error {
+	conn, err := grpc.Dial(dest.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return config, fmt.Errorf("error reading JSON file: %v", err)
+		return fmt.Errorf("error did not connect: %s", err)
+	}
+	defer func(conn *grpc.ClientConn) {
+		_ = conn.Close()
+	}(conn)
+
+	peerService := snapshotService.NewPeerFunctionClient(conn)
+
+	// Send message to peers
+	_, err = peerService.SendMessage(context.Background(), message)
+	if err != nil {
+		return fmt.Errorf("error when calling NewPeerAdded on peer: %s, err: %s", dest.Addr, err)
 	}
 
-	// Unmarshal JSON data into Config struct
-	if err := json.Unmarshal(data, &config); err != nil {
-		return config, fmt.Errorf("error unmarshalling JSON: %v", err)
-	}
-
-	return config, nil
+	return nil
 }

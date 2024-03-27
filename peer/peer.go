@@ -14,29 +14,14 @@ var (
 )
 
 func main() {
-	// Call the function to read the configuration
-	config, err := ReadConfig("../config.json")
+	// Fetch program args and configure peer and service addresses
+	err := appArgsFetch()
 	if err != nil {
-		fmt.Printf("Error reading configuration: %v\n", err)
-		return
-	}
-
-	if len(os.Args) == 1 || (len(os.Args) == 2 && os.Args[1] == "-localhost") {
-		serviceRegistryAddr = config.Localhost.ServiceRegistryAddr
-		serviceRegistryPort = config.Localhost.ServiceRegistryPort
-
-		peerAddr = config.Localhost.PeerAddr
-	} else if len(os.Args) == 2 && os.Args[1] == "-docker" {
-		serviceRegistryAddr = config.Docker.ServiceRegistryAddr
-		serviceRegistryPort = config.Docker.ServiceRegistryPort
-
-		peerAddr = config.Docker.PeerAddr
-	} else {
-		fmt.Printf("\nUsage: go run . [-localhost/-docker]\n\nDefault flag: -localhost")
+		fmt.Printf("appArgsFetch error: %s\n", err)
 		os.Exit(1)
 	}
 
-	// Initialize Peer Service server
+	// Initialize peer service server
 	lis, serviceAddr, peerServer := initPeerServiceServer()
 	log.Printf("Peer service server initialized: %s", lis.Addr())
 
